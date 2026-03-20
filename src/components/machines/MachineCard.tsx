@@ -1,3 +1,5 @@
+'use client';
+import React from "react";
 import { Machine } from "@/types";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { StatusDot } from "@/components/ui/StatusDot";
@@ -9,7 +11,7 @@ interface MachineCardProps {
   className?: string;
 }
 
-export function MachineCard({ machine, className }: MachineCardProps) {
+export const MachineCard = React.memo(function MachineCard({ machine, className }: MachineCardProps) {
   return (
     <Link href={`/dashboard/machines/${machine.id}`}>
       <div className={cn(
@@ -40,4 +42,4 @@ export function MachineCard({ machine, className }: MachineCardProps) {
       </div>
     </Link>
   );
-}
+});

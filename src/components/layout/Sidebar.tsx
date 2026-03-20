@@ -59,6 +59,7 @@ export function Sidebar() {
       {isDesktop && (
          <button 
            onClick={handleToggle}
+           aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
            className="absolute -right-3 top-8 w-6 h-6 bg-[var(--color-primary)] text-black rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(0,212,170,0.4)] z-50 hover:brightness-110 transition-all border border-black/10"
          >
            {isCollapsed ? <ChevronRight className="w-4 h-4 ml-0.5" /> : <ChevronLeft className="w-4 h-4 pr-0.5" />}

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Command } from 'cmdk';
 import { Search, LayoutDashboard, Calendar, AlertTriangle, Settings, Cpu, TerminalSquare, X } from 'lucide-react';
 
-export function CommandPalette() {
+export default function CommandPalette() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 

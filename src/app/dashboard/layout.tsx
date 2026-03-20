@@ -1,7 +1,6 @@
-import { TopNav } from "@/components/layout/TopNav";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/navigation/BottomNav";
-import { CommandPalette } from "@/components/navigation/CommandPalette";
+import CommandPalette from "@/components/navigation/CommandPalette";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
