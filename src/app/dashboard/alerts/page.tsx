@@ -1,8 +1,9 @@
-"use client";
-
-import { AlertTriangle, Filter, CheckCircle2, AlertCircle, Info, ArrowUpRight } from "lucide-react";
+'use client';
+import { useState } from 'react';
+import { AlertTriangle, Filter, CheckCircle2, AlertCircle, Info, ArrowUpRight, ChevronLeft } from "lucide-react";
 import { Alert } from "@/types";
 import { cn } from "@/lib/utils";
+import { useDrag } from '@use-gesture/react';
 
 const MOCK_ALERTS: Alert[] = [
   { id: "ALT-01", machineId: "MCH-003", machineName: "Main Compressor", severity: "critical", title: "Bearing Vibration Exceeds Threshold", description: "Vibration on bearing 2 has increased by 45% in the last 24h.", aiAnalysis: "High correlation (92%) with previous catastrophic failure patterns. Requires immediate inspection to prevent rotor damage.", status: "new", createdAt: new Date(Date.now() - 3600000).toISOString() },
@@ -10,81 +11,177 @@ const MOCK_ALERTS: Alert[] = [
   { id: "ALT-03", machineId: "MCH-006", machineName: "HVAC Unit North", severity: "info", title: "Filter Efficiency Reduced", description: "Intake flow has decreased by 5%.", aiAnalysis: "Expected degradation over time. Recommend replacing filter within the next 30 days.", status: "new", createdAt: new Date(Date.now() - 86400000).toISOString() }
 ];
 
-export default function AlertsPage() {
+function SwipeableAlert({ alert, onClick, isSelected }: { alert: Alert; onClick: () => void; isSelected: boolean }) {
+  const [acknowledged, setAcknowledged] = useState(alert.status === 'acknowledged');
+  const [translateX, setTranslateX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const bind = useDrag(({ movement: [mx], down, direction: [dx], velocity: [vx] }) => {
+    if (acknowledged) return;
+    setIsDragging(down);
+    const isSwipingRight = mx > 0;
+    
+    if (!down && isSwipingRight && mx > 80 && vx > 0.4) {
+      setAcknowledged(true);
+      setTranslateX(0); 
+    } else {
+      setTranslateX(down && isSwipingRight ? mx : 0);
+    }
+  }, { 
+    axis: 'x', 
+    bounds: { left: 0, right: 120 }, 
+    rubberband: true 
+  });
+
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-500 pb-12 h-[calc(100vh-80px)]">
-      <div className="flex items-center justify-between">
+    <div className="relative w-full rounded-xl overflow-hidden mb-1 sm:mb-2">
+      <div className="absolute inset-0 bg-[var(--color-success)]/20 flex items-center justify-start px-6 rounded-xl border border-[var(--color-success)]/50">
+        <span className="text-[var(--color-success)] font-bold text-sm tracking-widest uppercase flex items-center gap-2">
+          <CheckCircle2 className="w-5 h-5" /> Acknowledge
+        </span>
+      </div>
+      
+      <div 
+        {...bind()} 
+        onClick={onClick}
+        style={{ transform: `translateX(${translateX}px)`, touchAction: 'pan-y' }}
+        className={cn(
+          "relative p-4 md:p-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer hover:border-[var(--color-primary)]/50 w-full z-10",
+          !isDragging && "transition-all duration-300 ease-out",
+          isSelected && "border-[var(--color-primary)]/50 bg-[var(--color-primary)]/5 shadow-[0_0_15px_var(--color-primary)]/10",
+          acknowledged && "opacity-60 border-[var(--color-success)]/40 bg-[var(--color-success)]/5 shadow-none"
+        )}
+      >
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex items-center gap-2">
+             {acknowledged ? <CheckCircle2 className="w-4 h-4 text-[var(--color-success)]" /> :
+              alert.severity === 'critical' ? <AlertTriangle className="w-4 h-4 text-[var(--color-destructive)]" /> : 
+              alert.severity === 'warning' ? <AlertCircle className="w-4 h-4 text-[var(--color-warning)]" /> :
+              <Info className="w-4 h-4 text-[var(--color-info)]" />}
+             <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest uppercase text-[var(--color-muted)]">{alert.machineName}</span>
+          </div>
+          <span className="text-[10px] text-[var(--color-muted)] shrink-0">{new Date(alert.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+        <h3 className={cn("font-bold text-sm md:text-base mb-1.5 leading-snug", acknowledged && "line-through text-[var(--color-muted)] font-medium")}>{alert.title}</h3>
+        <p className="text-xs text-[var(--color-muted)] line-clamp-1 md:line-clamp-2">{alert.description}</p>
+      </div>
+    </div>
+  );
+}
+
+export default function AlertsPage() {
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+
+  const selectedAlert = MOCK_ALERTS.find(a => a.id === selectedAlertId) || MOCK_ALERTS[0];
+
+  return (
+    <div className="flex flex-col pt-2 animate-in fade-in duration-500 pb-20 h-screen md:h-[calc(100vh-80px)] overflow-hidden">
+      
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Alert & Notification Center</h1>
           <p className="text-[var(--color-muted)] text-sm">Triage and manage machine anomalies</p>
         </div>
-        <button className="flex items-center gap-2 bg-[var(--color-surface)] px-4 py-2 rounded-lg border border-[var(--color-border)] text-sm font-medium hover:bg-[var(--color-border)]/50 transition-colors">
+        <button className="hidden md:flex items-center gap-2 bg-[var(--color-surface)] px-4 py-2 rounded-lg border border-[var(--color-border)] text-sm font-medium hover:bg-[var(--color-border)]/50 transition-colors">
           <Filter className="w-4 h-4" /> Filter
         </button>
       </div>
 
-      <div className="flex gap-6 h-full min-h-0">
-        <div className="w-1/2 lg:w-2/5 flex flex-col gap-3 overflow-y-auto pr-2 custom-scrollbar">
-          {MOCK_ALERTS.map((alert) => (
-            <div key={alert.id} className={cn(
-              "p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer hover:border-[var(--color-primary)]/50 transition-all",
-              alert.id === "ALT-01" && "border-[var(--color-primary)]/50 bg-[var(--color-primary)]/5 shadow-[0_0_15px_var(--color-primary)]/10"
-            )}>
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  {alert.severity === 'critical' ? <AlertTriangle className="w-4 h-4 text-[var(--color-destructive)]" /> : 
-                   alert.severity === 'warning' ? <AlertCircle className="w-4 h-4 text-[var(--color-warning)]" /> :
-                   <Info className="w-4 h-4 text-[var(--color-info)]" />}
-                  <span className="text-xs font-mono font-bold tracking-widest uppercase text-[var(--color-muted)]">{alert.machineName}</span>
-                </div>
-                <span className="text-[10px] text-[var(--color-muted)]">{new Date(alert.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-              <h3 className="font-semibold text-sm mb-1">{alert.title}</h3>
-              <p className="text-xs text-[var(--color-muted)] line-clamp-1">{alert.description}</p>
+      {MOCK_ALERTS.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center bg-[var(--color-surface)]/50 border border-dashed border-[var(--color-border)] rounded-xl relative overflow-hidden my-4 min-h-[400px]">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[var(--color-success)]/10 blur-[80px] rounded-full pointer-events-none" />
+          <div className="relative z-10 flex flex-col items-center text-center max-w-sm px-6">
+            <div className="w-20 h-20 bg-[var(--color-success)]/10 rounded-full flex items-center justify-center mb-6 shadow-inner border border-[var(--color-success)]/20 animate-in zoom-in duration-500">
+              <CheckCircle2 className="w-10 h-10 text-[var(--color-success)]" />
             </div>
+            <h2 className="text-xl font-bold text-white mb-2">No Active Alerts</h2>
+            <p className="text-slate-400 text-sm mb-8 leading-relaxed">
+              All facility systems and machine agents are operating within nominal parameters. Telemetry is being monitored continuously.
+            </p>
+          </div>
+        </div>
+      ) : (
+
+      <div className="flex gap-6 h-full min-h-0 relative">
+        {/* List View */}
+        <div className={cn(
+          "w-full md:w-1/2 lg:w-2/5 flex flex-col gap-1 overflow-y-auto pr-0 md:pr-2 custom-scrollbar transition-all duration-300",
+          selectedAlertId ? "hidden md:flex" : "flex"
+        )}>
+          <p className="text-[10px] text-[var(--color-muted)] uppercase tracking-widest font-bold mb-2 ml-1 flex items-center gap-2 px-2 md:px-0">
+             <ArrowUpRight className="w-3 h-3 rotate-[30deg]" /> Swipe Right to Acknowledge
+          </p>
+          {MOCK_ALERTS.map((alert) => (
+            <SwipeableAlert 
+              key={alert.id} 
+              alert={alert} 
+              isSelected={selectedAlertId === alert.id} 
+              onClick={() => setSelectedAlertId(alert.id)} 
+            />
           ))}
         </div>
 
         {/* Detail Panel */}
-        <div className="flex-1 glass-panel rounded-xl p-6 flex flex-col overflow-y-auto relative custom-scrollbar">
+        <div className={cn(
+          "absolute md:relative inset-0 md:inset-auto z-50 md:z-0 w-full md:flex-1 glass-panel md:rounded-xl bg-[#0a0d12] md:bg-[var(--color-surface)]/40 p-5 md:p-6 flex flex-col overflow-y-auto custom-scrollbar transition-transform duration-300",
+          selectedAlertId ? "translate-x-0" : "translate-x-full md:translate-x-0 hidden md:flex"
+        )}>
+          {/* Mobile Back Button */}
+          <button 
+            onClick={() => setSelectedAlertId(null)}
+            className="md:hidden flex items-center gap-2 text-[var(--color-muted)] mb-5 hover:text-white pb-3 border-b border-[var(--color-border)]"
+          >
+            <ChevronLeft className="w-5 h-5" /> Back to Alert List
+          </button>
+
           <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--color-destructive)]/5 rounded-full blur-[80px]" />
           
-          <div className="flex items-center gap-3 mb-6 relative z-10">
-            <div className="p-3 bg-[var(--color-destructive)]/10 text-[var(--color-destructive)] rounded-xl border border-[var(--color-destructive)]/20 shadow-[0_0_15px_var(--color-destructive)]/20">
-              <AlertTriangle className="w-8 h-8" />
+          <div className="flex items-start md:items-center gap-4 mb-6 relative z-10 pt-2 md:pt-0">
+            <div className={`p-3 shrink-0 rounded-xl border shadow-[0_0_15px_var(--color-destructive)]/20 ${
+              selectedAlert.severity === 'critical' ? 'bg-[var(--color-destructive)]/10 text-[var(--color-destructive)] border-[var(--color-destructive)]/20' :
+              selectedAlert.severity === 'warning' ? 'bg-[var(--color-warning)]/10 text-[var(--color-warning)] border-[var(--color-warning)]/20' :
+              'bg-[var(--color-info)]/10 text-[var(--color-info)] border-[var(--color-info)]/20 shadow-[0_0_15px_var(--color-info)]/20'
+            }`}>
+              {selectedAlert.severity === 'critical' ? <AlertTriangle className="w-7 h-7 md:w-8 md:h-8" /> : 
+               selectedAlert.severity === 'warning' ? <AlertCircle className="w-7 h-7 md:w-8 md:h-8" /> :
+               <Info className="w-7 h-7 md:w-8 md:h-8" />}
             </div>
             <div>
-              <h2 className="text-xl font-bold">{MOCK_ALERTS[0].title}</h2>
-              <p className="text-sm font-mono text-[var(--color-muted)] flex items-center gap-1">
-                {MOCK_ALERTS[0].machineName} <ArrowUpRight className="w-4 h-4 text-[var(--color-primary)] cursor-pointer" />
+              <h2 className="text-lg md:text-xl font-bold leading-snug lg:leading-normal">{selectedAlert.title}</h2>
+              <p className="text-xs md:text-sm font-mono text-[var(--color-muted)] flex items-center gap-1 mt-1">
+                {selectedAlert.machineName} <ArrowUpRight className="w-3 h-3 text-[var(--color-primary)] cursor-pointer" />
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-6 relative z-10">
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted)] mb-2">Description</h4>
-              <p className="text-sm">{MOCK_ALERTS[0].description}</p>
+          <div className="flex flex-col gap-6 relative z-10 flex-1">
+            <div className="bg-[var(--color-surface)]/50 p-4 rounded-xl border border-[var(--color-border)]">
+              <h4 className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[var(--color-muted)] mb-3">Diagnostic Context</h4>
+              <p className="text-sm leading-relaxed text-[var(--color-foreground)]">{selectedAlert.description}</p>
             </div>
             
-            <div className="border-l-4 border-l-[var(--color-primary)] bg-[var(--color-primary)]/5 p-4 rounded-r-xl">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--color-primary)] mb-2 flex items-center gap-2">
+            <div className="border-l-[3px] border-l-[var(--color-primary)] bg-[var(--color-primary)]/5 p-4 rounded-r-xl rounded-l-sm shadow-sm">
+              <h4 className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[var(--color-primary)] mb-3 flex items-center gap-2">
                 <SparklesIcon /> AI Root Cause Analysis
               </h4>
-              <p className="text-sm leading-relaxed">{MOCK_ALERTS[0].aiAnalysis}</p>
+              <p className="text-sm leading-relaxed text-[var(--color-foreground)]">{selectedAlert.aiAnalysis}</p>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-[var(--color-border)] flex items-center gap-4">
-              <button className="flex-1 bg-[var(--color-primary)] text-[#0D1117] font-bold py-3 rounded-lg hover:bg-[#00e6b8] transition-colors shadow-[0_0_15px_var(--color-primary)]/30">
+            <div className="mt-auto pt-6 border-t border-[var(--color-border)] flex flex-col sm:flex-row items-center gap-3">
+              <button className="w-full sm:flex-1 bg-[var(--color-primary)] text-[#0D1117] font-bold py-3.5 sm:py-3 rounded-xl hover:brightness-110 transition-colors shadow-[0_0_15px_var(--color-primary)]/30 border border-transparent">
                 1-Click Work Order
               </button>
-              <button className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] py-3 rounded-lg hover:bg-[var(--color-surface)]/80 font-medium transition-colors flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> Acknowledge
+              <button 
+                onClick={() => setSelectedAlertId(null)}
+                className="w-full sm:flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] py-3.5 sm:py-3 rounded-xl hover:bg-[var(--color-surface)]/80 font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4 text-[var(--color-muted)]" /> Close Detail
               </button>
             </div>
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

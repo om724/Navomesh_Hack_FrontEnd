@@ -2,14 +2,27 @@
 
 import { use } from "react";
 import Link from "next/link";
+import dynamic from 'next/dynamic';
 import { ChevronRight, MessageSquare, Plus, FileDown } from "lucide-react";
 import { ProtocolBadge } from "@/components/machines/ProtocolBadge";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { AgentPanel } from "@/components/agents/AgentPanel";
-import { TelemetryChart } from "@/components/charts/TelemetryChart";
 import { MaintenanceTable } from "@/components/machines/MaintenanceTable";
 import { Machine, TelemetryPoint, MaintenanceTask } from "@/types";
+
+// Dynamic import for heavy chart component
+const TelemetryChart = dynamic(
+  () => import("@/components/charts/TelemetryChart").then(mod => mod.TelemetryChart),
+  { 
+    ssr: false, 
+    loading: () => (
+      <div className="h-[300px] w-full bg-[#1C2128]/50 animate-pulse rounded-xl border border-[var(--color-border)] flex items-center justify-center">
+        <span className="text-slate-500 font-mono text-xs">Loading telemetry...</span>
+      </div>
+    ) 
+  }
+);
 
 // Mock data
 const MOCK_MACHINE: Machine = {
